@@ -25,44 +25,11 @@
             "supports_vision": true
         },
         {
-            "name": "Mistral-7B-Instruct-v0.3",
+            "name": "Llama-4-Scout-17B-16E-W4A16",
             "inference_endpoint": "replace_me",
             "api_key": "replace_me",
-            "model_name": "mistral-7b-instruct",
-            "max_tokens": 2048,
-            "temperature": 0.01,
-            "top_p": 0.95,
-            "presence_penalty": 1.03,
-            "supports_vision": false
-        },
-        {
-            "name": "Granite-3.1-8B-Instruct",
-            "inference_endpoint": "replace_me",
-            "api_key": "replace_me",
-            "model_name": "granite-3-8b-instruct",
-            "max_tokens": 2048,
-            "temperature": 0.01,
-            "top_p": 0.95,
-            "presence_penalty": 1.03,
-            "supports_vision": false
-        },
-        {
-            "name": "Granite-3.1-8B-Instruct-W4A16",
-            "inference_endpoint": "replace_me",
-            "api_key": "replace_me",
-            "model_name": "granite-3-1-8b-instruct-w4a16",
-            "max_tokens": 2048,
-            "temperature": 0.01,
-            "top_p": 0.95,
-            "presence_penalty": 1.03,
-            "supports_vision": false
-        },
-        {
-            "name": "Llama-3.1-8B-Instruct",
-            "inference_endpoint": "replace_me",
-            "api_key": "replace_me",
-            "model_name": "meta-llama/Llama-3.1-8B-Instruct",
-            "max_tokens": 2048,
+            "model_name": "llama-4-scout-17b-16e-w4a16",
+            "max_tokens": 300000,
             "temperature": 0.01,
             "top_p": 0.95,
             "presence_penalty": 1.03,
