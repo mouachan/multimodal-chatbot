@@ -62,8 +62,21 @@ class Chatbot:
         result = []
         if merged_text:
             result.append({"type": "text", "text": merged_text})
-        result.extend(all_images)
-
+        elif all_images:
+            # Ensure a text element is always present if there are images (some models require it)
+            result.append({"type": "text", "text": ""})
+        
+        # Add images, ensuring they have valid structure
+        for img_item in all_images:
+            if isinstance(img_item, dict) and "image_url" in img_item:
+                # Verify the image_url structure is correct
+                if isinstance(img_item["image_url"], dict) and "url" in img_item["image_url"]:
+                    result.append(img_item)
+                else:
+                    self.logger.warning(f"Invalid image_url structure: {img_item}")
+            else:
+                self.logger.warning(f"Invalid image item: {img_item}")
+        
         return result
 
     def _fix_conversation(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -211,6 +224,30 @@ class Chatbot:
                 messages.append(msg)
 
         messages = self._fix_conversation(messages)
+
+        # Log messages for multimodal models (truncate base64 images for logging)
+        if selected_config.get("supports_vision"):
+            import json
+            # Create a copy for logging (truncate base64 images)
+            log_messages = []
+            for msg in messages:
+                log_msg = msg.copy()
+                if isinstance(msg.get("content"), list):
+                    log_content = []
+                    for item in msg["content"]:
+                        if item.get("type") == "image_url":
+                            img_url = item.get("image_url", {}).get("url", "")
+                            if img_url:
+                                # Truncate for logging
+                                truncated = img_url[:50] + "..." if len(img_url) > 50 else img_url
+                                log_content.append({"type": "image_url", "image_url": {"url": truncated}})
+                            else:
+                                log_content.append({"type": "image_url", "image_url": {"url": "MISSING"}})
+                        else:
+                            log_content.append(item)
+                    log_msg["content"] = log_content
+                log_messages.append(log_msg)
+            self.logger.info(f"Multimodal model - Messages to send: {json.dumps(log_messages, indent=2)}")
 
         try:
             # Create a function to call
