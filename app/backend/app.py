@@ -5,12 +5,16 @@ import logging
 import os
 import sys
 import asyncio
+import base64
+import uuid
+import tempfile
+from pathlib import Path
 
 import httpx
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -102,6 +106,58 @@ async def health():
 async def get_llms():
     """Get llms"""
     return llms_config
+
+# Temporary image storage for base64 to URL conversion
+_image_cache = {}
+_image_dir = Path(tempfile.gettempdir()) / "multimodal_images"
+_image_dir.mkdir(exist_ok=True)
+
+@app.post("/api/upload-image")
+async def upload_image(data: dict):
+    """Convert base64 image to temporary URL"""
+    try:
+        base64_data = data.get("image", "")
+        if not base64_data or not base64_data.startswith("data:image"):
+            raise HTTPException(status_code=400, detail="Invalid image data")
+        
+        # Extract image data (remove data:image/xxx;base64, prefix)
+        header, encoded = base64_data.split(",", 1)
+        image_format = header.split(";")[0].split("/")[1]  # Extract format (jpeg, png, etc.)
+        
+        # Decode base64
+        image_bytes = base64.b64decode(encoded)
+        
+        # Generate unique filename
+        image_id = str(uuid.uuid4())
+        filename = f"{image_id}.{image_format}"
+        filepath = _image_dir / filename
+        
+        # Save image
+        with open(filepath, "wb") as f:
+            f.write(image_bytes)
+        
+        # Store in cache
+        _image_cache[image_id] = filepath
+        
+        # Return URL (relative to the API base)
+        # In production, this should be an absolute URL
+        image_url = f"/api/images/{image_id}"
+        return {"url": image_url, "id": image_id}
+    except Exception as e:
+        _logger.error(f"Error uploading image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/images/{image_id}")
+async def get_image(image_id: str):
+    """Serve temporary image"""
+    if image_id not in _image_cache:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    filepath = _image_cache[image_id]
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Image file not found")
+    
+    return FileResponse(filepath)
 
 
 async def handle_client_request(websocket: WebSocket, data: dict):

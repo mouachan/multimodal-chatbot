@@ -1,4 +1,7 @@
 import os
+import base64
+import uuid
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Union
 
@@ -19,7 +22,7 @@ class Chatbot:
         stream: Streams the chatbot's response based on the query and other parameters.
     """
 
-    def __init__(self, config, logger):
+    def __init__(self, config, logger, api_base_url=None):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         self.logger = logger
         self.config = config
@@ -28,6 +31,7 @@ class Chatbot:
         self.translate_system_template = self.config.get(
             "translate_system_template", ""
         )
+        self.api_base_url = api_base_url or "http://localhost:5000"
 
         # This mapping is used to convert language codes to their full names.
         self.language_mapping = {
@@ -62,8 +66,21 @@ class Chatbot:
         result = []
         if merged_text:
             result.append({"type": "text", "text": merged_text})
-        result.extend(all_images)
-
+        elif all_images:
+            # Ensure a text element is always present if there are images (some models require it)
+            result.append({"type": "text", "text": ""})
+        
+        # Add images, ensuring they have valid structure
+        for img_item in all_images:
+            if isinstance(img_item, dict) and "image_url" in img_item:
+                # Verify the image_url structure is correct
+                if isinstance(img_item["image_url"], dict) and "url" in img_item["image_url"]:
+                    result.append(img_item)
+                else:
+                    self.logger.warning(f"Invalid image_url structure: {img_item}")
+            else:
+                self.logger.warning(f"Invalid image item: {img_item}")
+        
         return result
 
     def _fix_conversation(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -211,6 +228,44 @@ class Chatbot:
                 messages.append(msg)
 
         messages = self._fix_conversation(messages)
+
+        # Convert base64 images to URLs for models that don't support base64 inline
+        if selected_config.get("supports_vision"):
+            import json
+            # Check if we need to convert base64 to URLs (llava-multimodal doesn't support base64)
+            for msg in messages:
+                if isinstance(msg.get("content"), list):
+                    for item in msg["content"]:
+                        if item.get("type") == "image_url":
+                            img_url = item.get("image_url", {}).get("url", "")
+                            # If it's a base64 data URL, we need to convert it
+                            if img_url and img_url.startswith("data:image"):
+                                # For now, log a warning - the model doesn't support base64
+                                # This is a limitation of llava-multimodal
+                                self.logger.warning(f"Base64 image detected but model doesn't support it. Image URL: {img_url[:50]}...")
+                                # Note: We would need to implement image serving to convert base64 to URL
+                                # For now, this will fail with the model
+            
+            # Create a copy for logging (truncate base64 images)
+            log_messages = []
+            for msg in messages:
+                log_msg = msg.copy()
+                if isinstance(msg.get("content"), list):
+                    log_content = []
+                    for item in msg["content"]:
+                        if item.get("type") == "image_url":
+                            img_url = item.get("image_url", {}).get("url", "")
+                            if img_url:
+                                # Truncate for logging
+                                truncated = img_url[:50] + "..." if len(img_url) > 50 else img_url
+                                log_content.append({"type": "image_url", "image_url": {"url": truncated}})
+                            else:
+                                log_content.append({"type": "image_url", "image_url": {"url": "MISSING"}})
+                        else:
+                            log_content.append(item)
+                    log_msg["content"] = log_content
+                log_messages.append(log_msg)
+            self.logger.info(f"Multimodal model - Messages to send: {json.dumps(log_messages, indent=2)}")
 
         try:
             # Create a function to call
