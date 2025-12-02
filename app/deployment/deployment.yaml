@@ -15,9 +15,10 @@ spec:
         app: multimodal-chatbot
         deployment: multimodal-chatbot
     spec:
+      serviceAccountName: multimodal-chatbot
       containers:
         - name: multimodal-chatbot
-          image: quay.io/rh-aiservices-bu/multimodal-chatbot:latest
+          image: quay.io/mouachan/multimodal-chatbot:latest
           ports:
             - containerPort: 5000
               protocol: TCP
