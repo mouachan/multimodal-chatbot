@@ -15,7 +15,6 @@ spec:
         app: multimodal-chatbot
         deployment: multimodal-chatbot
     spec:
-      serviceAccountName: multimodal-chatbot
       containers:
         - name: multimodal-chatbot
           image: quay.io/rh-aiservices-bu/multimodal-chatbot:latest
