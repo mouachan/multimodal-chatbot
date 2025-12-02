@@ -1,7 +1,4 @@
 import os
-import base64
-import uuid
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Union
 
@@ -22,7 +19,7 @@ class Chatbot:
         stream: Streams the chatbot's response based on the query and other parameters.
     """
 
-    def __init__(self, config, logger, api_base_url=None):
+    def __init__(self, config, logger):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         self.logger = logger
         self.config = config
@@ -31,7 +28,6 @@ class Chatbot:
         self.translate_system_template = self.config.get(
             "translate_system_template", ""
         )
-        self.api_base_url = api_base_url or "http://localhost:5000"
 
         # This mapping is used to convert language codes to their full names.
         self.language_mapping = {
@@ -229,23 +225,9 @@ class Chatbot:
 
         messages = self._fix_conversation(messages)
 
-        # Convert base64 images to URLs for models that don't support base64 inline
+        # Log messages for multimodal models (truncate base64 images for logging)
         if selected_config.get("supports_vision"):
             import json
-            # Check if we need to convert base64 to URLs (llava-multimodal doesn't support base64)
-            for msg in messages:
-                if isinstance(msg.get("content"), list):
-                    for item in msg["content"]:
-                        if item.get("type") == "image_url":
-                            img_url = item.get("image_url", {}).get("url", "")
-                            # If it's a base64 data URL, we need to convert it
-                            if img_url and img_url.startswith("data:image"):
-                                # For now, log a warning - the model doesn't support base64
-                                # This is a limitation of llava-multimodal
-                                self.logger.warning(f"Base64 image detected but model doesn't support it. Image URL: {img_url[:50]}...")
-                                # Note: We would need to implement image serving to convert base64 to URL
-                                # For now, this will fail with the model
-            
             # Create a copy for logging (truncate base64 images)
             log_messages = []
             for msg in messages:
