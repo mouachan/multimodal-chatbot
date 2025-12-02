@@ -20,7 +20,14 @@ The configuration is set in a single [config.json](./app/backend/config.json.exa
 
 This is a [Patternfly 6](https://www.patternfly.org/) application, connected to the backend through  Websocket to receive and display the content streamed by the backend.
 
-### Building and Pushing the Container Image
+### Container Image
+
+You have two options for the container image:
+
+**Option 1: Use the pre-built public image**
+- The application container image is available at [https://quay.io/repository/rh-aiservices-bu/multimodal-chatbot](https://quay.io/repository/rh-aiservices-bu/multimodal-chatbot).
+
+**Option 2: Build and push your own image**
 
 The application uses a Containerfile (located in `app/Containerfile`) to build the container image. To build and push the image to your registry:
 
@@ -48,7 +55,7 @@ The application uses a Containerfile (located in `app/Containerfile`) to build t
 
 ### Deployment on OpenShift
 
-- The application container image should be built and pushed to your registry (see above).
+- Use the pre-built public image (see above) or build and push your own image to your registry.
 - Deployment files examples are available in the [Deployment](./app/deployment/) folder.
 - An example configuration file for accessing the models and vector database is available [here](./app/backend/config.json.example). Once modified with your own values, it must be created as a Secret with:
 
